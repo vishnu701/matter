@@ -12,6 +12,11 @@ from core.losses import custom_rmse
 from core.data  import load_records
 from time import gmtime, strftime
 
+
+cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='local')
+tf.tpu.experimental.initialize_tpu_system(cluster_resolver)
+strategy = tf.distribute.TPUStrategy(cluster_resolver)
+
 logging.getLogger('tensorflow').setLevel(logging.ERROR)  # suppress warnings
 
 
@@ -45,20 +50,21 @@ def run(opt):
                                  same_frac=opt.same_frac,
                                  shuffle=False,
                                  sampling=False)
-
-    # Training ASTROMER
-    model = get_ASTROMER(num_layers=opt.layers,
-                         d_model=opt.head_dim,
-                         num_heads=opt.heads,
-                         dff=opt.dff,
-                         base=opt.base,
-                         dropout=opt.dropout,
-                         maxlen=opt.max_obs,
-                         multi_gpu=True)
-
-    model.compile(optimizer='adam',
-                  loss=custom_rmse,
-                  metrics=[custom_r2])
+    with strategy.scope():
+        # Training ASTROMER
+        model = get_ASTROMER(num_layers=opt.layers,
+                            d_model=opt.head_dim,
+                            num_heads=opt.heads,
+                            dff=opt.dff,
+                            base=opt.base,
+                            dropout=opt.dropout,
+                            maxlen=opt.max_obs,
+                            multi_gpu=True)
+        
+        model.compile(optimizer='adam',
+                    loss=custom_rmse,
+                    metrics=[custom_r2],
+                    steps_per_execution = 50)
 
     # CALLBACKS
     estop = EarlyStopping(monitor='val_loss',

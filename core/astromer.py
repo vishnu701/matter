@@ -13,6 +13,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import Model
 from tqdm import tqdm
 
+
 logging.getLogger('tensorflow').setLevel(logging.ERROR)  # suppress warnings
 os.system('clear')
 
